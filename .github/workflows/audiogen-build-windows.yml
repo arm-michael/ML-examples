@@ -94,12 +94,12 @@ jobs:
           name: audiogen-windows-x64
           path: dist
 
-      # audiogen.exe writes all output to stderr (fprintf(stderr,...)).
-      # PowerShell's 2>&1 wraps stderr lines as ErrorRecord objects, not strings.
-      # Piping through Out-String flattens the mixed collection into a single
-      # string so that -match / -notmatch work correctly.
+      # audiogen.exe exits 1 by design for -h and all error cases (EXIT_FAILURE).
+      # PowerShell propagates $LASTEXITCODE as the step exit code when the script
+      # ends without an explicit exit — so each step must call exit 0 after its
+      # checks pass. Out-String flattens the mixed stderr ErrorRecord / stdout
+      # string collection so that -match / -notmatch work on a single string.
 
-      # -h should print usage text. The app exits non-zero — that is expected.
       - name: Smoke — help flag prints usage
         shell: pwsh
         run: |
@@ -110,8 +110,8 @@ jobs:
             exit 1
           }
           Write-Host "PASS: usage text present"
+          exit 0
 
-      # No arguments should print the missing-args error, not crash.
       - name: Smoke — no args prints error cleanly
         shell: pwsh
         run: |
@@ -122,8 +122,8 @@ jobs:
             exit 1
           }
           Write-Host "PASS: clean error output, no crash"
+          exit 0
 
-      # Verify -m, -p, -t are accepted (reaches model-load error, not arg error)
       - name: Smoke — required flags accepted, reaches model-load stage
         shell: pwsh
         run: |
@@ -134,3 +134,4 @@ jobs:
             exit 1
           }
           Write-Host "PASS: flags parsed, reached model-load stage"
+          exit 0
