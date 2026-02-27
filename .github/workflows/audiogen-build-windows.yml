@@ -94,12 +94,16 @@ jobs:
           name: audiogen-windows-x64
           path: dist
 
-      # -h should print usage text. The app exits non-zero — that is expected
-      # and correct. We check that it does NOT crash (no exit code 3/segfault).
+      # audiogen.exe writes all output to stderr (fprintf(stderr,...)).
+      # PowerShell's 2>&1 wraps stderr lines as ErrorRecord objects, not strings.
+      # Piping through Out-String flattens the mixed collection into a single
+      # string so that -match / -notmatch work correctly.
+
+      # -h should print usage text. The app exits non-zero — that is expected.
       - name: Smoke — help flag prints usage
         shell: pwsh
         run: |
-          $output = & dist\audiogen.exe -h 2>&1
+          $output = & dist\audiogen.exe -h 2>&1 | Out-String
           Write-Host $output
           if ($output -notmatch "Usage") {
             Write-Error "ERROR: -h flag did not produce usage text"
@@ -111,9 +115,8 @@ jobs:
       - name: Smoke — no args prints error cleanly
         shell: pwsh
         run: |
-          $output = & dist\audiogen.exe 2>&1
+          $output = & dist\audiogen.exe 2>&1 | Out-String
           Write-Host $output
-          # Must mention missing/required args — must NOT be an access violation
           if ($output -match "access violation|segfault|unhandled exception") {
             Write-Error "ERROR: process crashed"
             exit 1
@@ -124,7 +127,7 @@ jobs:
       - name: Smoke — required flags accepted, reaches model-load stage
         shell: pwsh
         run: |
-          $output = & dist\audiogen.exe -m nonexistent_path -p "test prompt" -t 2 2>&1
+          $output = & dist\audiogen.exe -m nonexistent_path -p "test prompt" -t 2 2>&1 | Out-String
           Write-Host $output
           if ($output -match "Missing required arguments") {
             Write-Error "ERROR: flags were not parsed correctly"
